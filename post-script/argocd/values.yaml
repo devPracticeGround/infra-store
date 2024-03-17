@@ -39,7 +39,7 @@ crds:
 global:
   # -- Default domain used by all components
   ## Used for ingresses, certificates, SSO, notifications, etc.
-  domain: argocd.geunsam2.xyz
+  domain: argocd-dev.geunsam2.xyz
 
   # -- Common labels for the all resources
   additionalLabels: {}
@@ -188,10 +188,10 @@ configs:
     #       id: github
     #       name: GitHub
     #       config:
-    #         clientID: aabbccddeeff00112233
-    #         clientSecret: $dex.github.clientSecret # Alternatively $<some_K8S_secret>:dex.github.clientSecret
+    #         clientID: update-me
+    #         clientSecret: update-me
     #         orgs:
-    #         - name: your-github-org
+    #         - name: devPracticeCenter
 
     # OIDC configuration as an alternative to dex (optional).
     # oidc.config: |
