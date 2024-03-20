@@ -58,26 +58,15 @@ module "eks" {
     "${var.cluster_name}-default-group" = {
       name = "node-group-1"
 
-      instance_types = ["t3.medium"]
+      instance_types = ["t3a.xlarge"]
+      disk_size      = 200 
 
-      min_size     = 1
+      min_size     = 2
       max_size     = 3
       desired_size = 2
     }
   }
 }
-
-
-# resource "helm_release" "argocd" {
-#   name             = "argocd"
-#   repository       = "https://argoproj.github.io/argo-helm"
-#   chart            = "argo-cd"
-#   namespace        = "argocd"
-#   create_namespace = true
-#   version          = "3.35.4"
-#   values           = [file("argocd.yaml")]
-# }
-
 
 # https://aws.amazon.com/blogs/containers/amazon-ebs-csi-driver-is-now-generally-available-in-amazon-eks-add-ons/ 
 data "aws_iam_policy" "ebs_csi_policy" {
