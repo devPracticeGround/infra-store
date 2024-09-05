@@ -1,0 +1,27 @@
+controller:
+  replicaCount: "2"
+  allowSnippetAnnotations: false
+  ingressClass: "nginx"
+  containerPort:
+    http: 80
+    https: 443
+    special: 8000
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+      service.beta.kubernetes.io/aws-load-balancer-internal: "false"  # 내부 NLB로 설정 시 "true"
+      service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"  # 인터넷 프론트
+      service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    nodePorts:
+      http: 30080
+      https: 30443
+      tcp:
+        "8200": 30200
+    externalTrafficPolicy: Local
+
+tcp:
+  "8200": "ingress-nginx/ingress-nginx-defaultbackend:80"
+
+defaultBackend:
+  enabled: true

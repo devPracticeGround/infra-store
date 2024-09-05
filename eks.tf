@@ -11,6 +11,7 @@ data "aws_availability_zones" "available" {
   }
 }
 
+# VPC 생성
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.0.0"
@@ -38,6 +39,7 @@ module "vpc" {
   }
 }
 
+# EKS 클러스터 생성
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "19.15.3"
@@ -45,27 +47,73 @@ module "eks" {
   cluster_name    = var.cluster_name
   cluster_version = "1.27"
 
-  vpc_id                         = module.vpc.vpc_id
-  subnet_ids                     = module.vpc.private_subnets
   cluster_endpoint_public_access = true
 
+  vpc_id                         = module.vpc.vpc_id
+  subnet_ids                     = module.vpc.private_subnets
+  
   eks_managed_node_group_defaults = {
     ami_type = "AL2_x86_64"
-
   }
 
   eks_managed_node_groups = {
     "${var.cluster_name}-default-group" = {
       name = "node-group-1"
-
       instance_types = ["t3a.xlarge"]
-      disk_size      = 200 
-
+      disk_size = 200
       min_size     = 2
       max_size     = 3
       desired_size = 2
     }
   }
+}
+
+data "aws_eks_cluster_auth" "this" {
+  name = var.cluster_name
+}
+
+# Helm provider 설정
+provider "helm" {
+  kubernetes {
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+    token                  = data.aws_eks_cluster_auth.this.token
+  }
+}
+
+locals {
+  lb_controller_iam_role_name        = "${var.cluster_name}-eks-lb"
+  lb_controller_service_account_name = "${var.cluster_name}-eks-sa"
+}
+
+module "lb_controller_role" {
+  source = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
+
+  create_role = true
+
+  role_name        = local.lb_controller_iam_role_name
+  role_path        = "/"
+  role_description = "Used by AWS Load Balancer Controller for EKS"
+
+  role_permissions_boundary_arn = ""
+
+  provider_url = replace(module.eks.cluster_oidc_issuer_url, "https://", "")
+  oidc_fully_qualified_subjects = [
+    "system:serviceaccount:kube-system:${local.lb_controller_service_account_name}"
+  ]
+  oidc_fully_qualified_audiences = [
+    "sts.amazonaws.com"
+  ]
+}
+
+data "http" "iam_policy" {
+  url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.4.0/docs/install/iam_policy.json"
+}
+
+resource "aws_iam_role_policy" "controller" {
+  name_prefix = "AWSLoadBalancerControllerIAMPolicy"
+  policy      = data.http.iam_policy.body
+  role        = module.lb_controller_role.iam_role_name
 }
 
 # https://aws.amazon.com/blogs/containers/amazon-ebs-csi-driver-is-now-generally-available-in-amazon-eks-add-ons/ 
@@ -94,3 +142,23 @@ resource "aws_eks_addon" "ebs-csi" {
     "terraform" = "true"
   }
 }
+
+
+
+# Helm을 이용한 ingress-nginx 설치 및 NLB 자동 생성
+resource "helm_release" "ingress_nginx" {
+  name            = "ingress-nginx"
+  namespace       = "ingress-nginx"
+  create_namespace = true
+  chart           = "ingress-nginx"
+  repository      = "https://kubernetes.github.io/ingress-nginx"
+  version         = "4.5.2"
+
+  # 별도 values 파일을 참조
+  values = [
+      "${file("helm-values/ingress-values.yaml")}"
+    ]
+
+  depends_on = [module.eks]
+}
+

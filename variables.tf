@@ -10,5 +10,5 @@ variable "region" {
 variable "cluster_name" {
   description = "AWS EKS cluster name"
   type        = string
-  default     = "devPractice"
+  default     = "devPractice2"
 }
