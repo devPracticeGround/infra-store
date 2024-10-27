@@ -191,7 +191,7 @@ configs:
     #         clientID: update-me
     #         clientSecret: update-me
     #         orgs:
-    #         - name: devPracticeCenter
+    #         - name: devPracticeGround
 
     # OIDC configuration as an alternative to dex (optional).
     # oidc.config: |
