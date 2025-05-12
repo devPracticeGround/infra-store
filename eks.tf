@@ -57,13 +57,12 @@ module "eks" {
   }
 
   eks_managed_node_groups = {
-    "${var.cluster_name}-default-group" = {
-      name = "node-group-1"
+    "default-group" = {
       instance_types = ["t3a.xlarge"]
       disk_size = 200
-      min_size     = 1
-      max_size     = 1
-      desired_size = 1
+      min_size     = 2
+      max_size     = 3
+      desired_size = 2
     }
   }
 }
@@ -112,7 +111,7 @@ data "http" "iam_policy" {
 
 resource "aws_iam_role_policy" "controller" {
   name_prefix = "AWSLoadBalancerControllerIAMPolicy"
-  policy      = data.http.iam_policy.body
+  policy      = data.http.iam_policy.response_body
   role        = module.lb_controller_role.iam_role_name
 }
 
@@ -135,7 +134,7 @@ module "irsa-ebs-csi" {
 resource "aws_eks_addon" "ebs-csi" {
   cluster_name             = module.eks.cluster_name
   addon_name               = "aws-ebs-csi-driver"
-  addon_version            = "v1.28.0-eksbuild.1"
+  addon_version            = "v1.29.1-eksbuild.1"
   service_account_role_arn = module.irsa-ebs-csi.iam_role_arn
   tags = {
     "eks_addon" = "ebs-csi"
@@ -167,9 +166,9 @@ resource "helm_release" "argocd" {
   name            = "argocd"
   namespace       = "argocd"
   create_namespace = true
-  chart           = "argocd"
+  chart           = "argo-cd"
   repository      = "https://argoproj.github.io/argo-helm"
-  version         = "1.0.0"
+  version         = "6.7.2"
 
   # 별도 values 파일을 참조
   values = [
