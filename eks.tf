@@ -45,7 +45,7 @@ module "eks" {
   version = "19.15.3"
 
   cluster_name    = var.cluster_name
-  cluster_version = "1.27"
+  cluster_version = "1.32"
 
   cluster_endpoint_public_access = true
 
@@ -61,9 +61,9 @@ module "eks" {
       name = "node-group-1"
       instance_types = ["t3a.xlarge"]
       disk_size = 200
-      min_size     = 2
-      max_size     = 3
-      desired_size = 2
+      min_size     = 1
+      max_size     = 1
+      desired_size = 1
     }
   }
 }
@@ -107,7 +107,7 @@ module "lb_controller_role" {
 }
 
 data "http" "iam_policy" {
-  url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.4.0/docs/install/iam_policy.json"
+  url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.7.1/docs/install/iam_policy.json"
 }
 
 resource "aws_iam_role_policy" "controller" {
@@ -135,7 +135,7 @@ module "irsa-ebs-csi" {
 resource "aws_eks_addon" "ebs-csi" {
   cluster_name             = module.eks.cluster_name
   addon_name               = "aws-ebs-csi-driver"
-  addon_version            = "v1.20.0-eksbuild.1"
+  addon_version            = "v1.28.0-eksbuild.1"
   service_account_role_arn = module.irsa-ebs-csi.iam_role_arn
   tags = {
     "eks_addon" = "ebs-csi"
@@ -160,5 +160,22 @@ resource "helm_release" "ingress_nginx" {
     ]
 
   depends_on = [module.eks]
+}
+
+# Helm을 이용한 ArgoCD 설치
+resource "helm_release" "argocd" {
+  name            = "argocd"
+  namespace       = "argocd"
+  create_namespace = true
+  chart           = "argocd"
+  repository      = "https://argoproj.github.io/argo-helm"
+  version         = "1.0.0"
+
+  # 별도 values 파일을 참조
+  values = [
+      "${file("helm-values/argocd-values.yaml")}"
+    ]
+
+  depends_on = [helm_release.ingress_nginx]
 }
 

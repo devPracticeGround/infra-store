@@ -1,4 +1,9 @@
 terraform {
+  backend "s3" {
+    bucket         = "devpractice-terraform-state"
+    key            = "terraform.tfstate"
+    region         = "ap-northeast-2"
+  }
 
   required_providers {
     aws = {
